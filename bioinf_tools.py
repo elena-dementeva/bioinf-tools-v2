@@ -9,6 +9,16 @@ from scripts.dna_rna_tools import (
 
 
 def run_dna_rna_tools(*args: str) -> Union[str, list]:
+    """
+    Processes DNA/RNA sequences based on the specified action.
+
+    Args:
+        *args: Sequences followed by an action ("transcribe", "reverse",
+        "complement" or "reverse_complement").
+
+    Returns:
+        Processed sequences as a string or a list of strings.
+    """
     *seqs, action = args
 
     results = []
@@ -35,6 +45,19 @@ def filter_fastq(
     length_bounds: Union[Tuple[int, int], int] = (0, 2**32),
     quality_threshold: float = 0
 ) -> Dict[str, Tuple[str, str]]:
+    """    
+    Filters sequences based on GC content, length and quality.
+
+    Args:
+        seqs: dictionary with sequence names as keys and 
+        quality as value.
+        gc_bounds: Tuple or value which specify GC content bounds.
+        length_bounds: Tuple or value which specify length bounds.
+        quality_threshold: Minimum quality for filtering.
+
+    Returns:
+        Filtered sequences as a dictionary.
+    """
 
     def calc_gc(seq: str) -> float:
         gc_count = sum(base in 'GCgc' for base in seq)
@@ -73,11 +96,3 @@ def filter_fastq(
             filtered[name] = (seq, qual)
 
     return filtered
-
-
-def main():
-    pass
-
-
-if __name__ == "__main__":
-    main()
