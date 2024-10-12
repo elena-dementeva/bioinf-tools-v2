@@ -41,12 +41,13 @@ def run_dna_rna_tools(*args: str) -> Union[str, list]:
 
 
 def filter_fastq(
-    seqs: Dict[str, Tuple[str, str]],
+    input_fastq: str,
+    output_fastq: str,
     gc_bounds: Union[Tuple[float, float], float] = (0, 100),
     length_bounds: Union[Tuple[int, int], int] = (0, 2**32),
     quality_threshold: float = 0
-) -> Dict[str, Tuple[str, str]]:
-    """    
+) -> None:
+    """
     Reads a FASTQ file, filters sequences based on GC content, length, and quality, 
     and writes the filtered sequences to a new FASTQ file.
 
@@ -58,14 +59,14 @@ def filter_fastq(
         quality_threshold: Minimum quality for filtering.
     """
     with open(output_fastq, 'w') as out_file:
-    for name, seq, qual in read_fastq(input_fastq):
-        gc_content = (sum(base in 'GCgc' for base in seq) / len(seq)) * 100
-        seq_len = len(seq)
-        avg_quality = sum(ord(char) - 33 for char in qual) / len(qual)
+        for name, seq, qual in read_fastq(input_fastq):
+            gc_content = (sum(base in 'GCgc' for base in seq) / len(seq)) * 100
+            seq_len = len(seq)
+            avg_quality = sum(ord(char) - 33 for char in qual) / len(qual)
 
-        if (
-            (gc_bounds[0] <= gc_content <= gc_bounds[1]) and
-            (length_bounds[0] <= seq_len <= length_bounds[1]) and
-            avg_quality >= quality_threshold
-        ):
-            write_fastq(out_file, name, seq, qual)
+            if (
+                (gc_bounds[0] <= gc_content <= gc_bounds[1]) and
+                (length_bounds[0] <= seq_len <= length_bounds[1]) and
+                avg_quality >= quality_threshold
+            ):
+                write_fastq(out_file, name, seq, qual)
