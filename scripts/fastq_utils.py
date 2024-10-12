@@ -1,29 +1,39 @@
-def read_fastq(input_fastq):
-    """
-    Read sequences from a FASTQ file.
+import os
 
-    Args:
-        input_fastq: Path to FASTQ file.
+
+def read_fastq(file_path: str) -> dict:
     """
-    with open(input_fastq, 'r') as file:
+    Reads sequences from a FASTQ file and returns them as a dictionary.
+    Key is the sequence name, value is a tuple (sequence, quality).
+    """
+    sequences = {}
+    with open(file_path, 'r') as file:
         while True:
-            header = file.readline().strip()
-            if not header:
+            name = file.readline().strip()
+            if not name:
                 break
-            sequence = file.readline().strip()
-            file.readline()  # Skip '+'
-            quality = file.readline().strip()
-            yield header, sequence, quality
+            seq = file.readline().strip()
+            file.readline()
+            qual = file.readline().strip()
+            sequences[name] = (seq, qual)
+    return sequences
 
-def write_fastq(output_fastq, header, sequence, quality):
+
+def write_fastq(sequences: dict, output_fastq: str) -> None:
     """
     Writes a sequence to a FASTQ file.
-
-    Args:
-        output_fastq (str): Output FASTQ file path.
-        header (str): Sequence header.
-        sequence (str): DNA sequence.
-        quality (str): Quality scores.
     """
-    with open(output_fastq, 'a') as file:
-        file.write(f"{header}\n{sequence}\n+\n{quality}\n")
+    if not output_fastq.endswith(".fastq"):
+        output_fastq += ".fastq"
+    output_path = os.path.join("filtered", output_fastq)
+    output_dir = os.path.dirname(output_path)
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    if os.path.exists(output_path):
+        raise FileExistsError("File exists. Choose a different name.")
+
+    with open(output_path, 'w') as file:
+        for name, (seq, qual) in sequences.items():
+            file.write("{}\n{}\n+\n{}\n".format(name, seq, qual))
