@@ -1,13 +1,10 @@
 def transcribe(sequence: str) -> str:
     """
     Converts a DNA sequence to RNA by replacing 'T' with 'U'.
-    
     Args:
         sequence (str): DNA sequence.
-    
     Returns:
         str: RNA sequence.
-    
     Raises:
         ValueError: If the sequence contains RNA ('U' or 'u').
     """
@@ -19,10 +16,8 @@ def transcribe(sequence: str) -> str:
 def reverse(sequence: str) -> str:
     """
     Reverse the sequence.
-    
     Args:
         sequence (str): Input sequence.
-    
     Returns:
         str: Reversed sequence.
     """
@@ -32,10 +27,8 @@ def reverse(sequence: str) -> str:
 def complement(sequence: str) -> str:
     """
     Returns the complement of a DNA/RNA sequence.
-    
     Args:
         sequence (str): Input sequence.
-    
     Returns:
         str: Complement sequence.
     """
@@ -50,23 +43,19 @@ def complement(sequence: str) -> str:
 def reverse_complement(sequence: str) -> str:
     """
     Returns the reverse complement of a sequence.
-    
     Args:
         sequence (str): Input sequence.
-    
     Returns:
         str: Reverse complement sequence.
     """
     return reverse(complement(sequence))
 
 
-def validate_sequence(sequence: str) -> None:
+def validate(sequence: str) -> None:
     """
     Checks if a sequence is DNA or RNA.
-    
     Args:
         sequence (str): Sequence to validation.
-    
     Raises:
         ValueError: If the sequence is invalid or contains T and U.
     """
