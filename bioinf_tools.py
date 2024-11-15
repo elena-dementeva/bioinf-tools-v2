@@ -1,20 +1,31 @@
-from typing import Dict, Tuple, Union
+from typing import Tuple, Union
+
 from scripts.dna_rna_tools import (
     transcribe,
     reverse,
     complement,
     reverse_complement,
-    validate_sequence
+    validate
 )
+
+from scripts.fastq_utils import read_fastq, write_fastq
 
 
 def run_dna_rna_tools(*args: str) -> Union[str, list]:
+    """
+    Processes DNA/RNA sequences based on the specified action.
+    Args:
+        *args: Sequences followed by an action ("transcribe", "reverse",
+        "complement" or "reverse_complement").
+    Returns:
+        Processed sequences as a string or a list of strings.
+    """
     *seqs, action = args
 
     results = []
 
     for seq in seqs:
-        validate_sequence(seq)
+        validate(seq)
         if action == "transcribe":
             results.append(transcribe(seq))
         elif action == "reverse":
@@ -30,54 +41,35 @@ def run_dna_rna_tools(*args: str) -> Union[str, list]:
 
 
 def filter_fastq(
-    seqs: Dict[str, Tuple[str, str]],
+    input_fastq: str,
+    output_fastq: str,
     gc_bounds: Union[Tuple[float, float], float] = (0, 100),
     length_bounds: Union[Tuple[int, int], int] = (0, 2**32),
     quality_threshold: float = 0
-) -> Dict[str, Tuple[str, str]]:
+) -> None:
+    """
+    Reads a FASTQ file, filters sequences based on GC content, length, quality,
+    and writes to a FASTQ file in the 'filtered'folder.
+    Args:
+        input_fastq: Path to the input FASTQ file.
+        output_fastq: Path for saving filtered sequences.
+        gc_bounds: Tuple or value which specify GC content bounds.
+        length_bounds: Tuple or value which specify length bounds.
+        quality_threshold: Minimum quality for filtering.
+    """
+    sequences = read_fastq(input_fastq)
+    filtered_sequences = {}
 
-    def calc_gc(seq: str) -> float:
-        gc_count = sum(base in 'GCgc' for base in seq)
-        return (gc_count / len(seq)) * 100 if seq else 0
-
-    def calc_quality(qual: str) -> float:
-        return sum(ord(char) - 33 for char in qual) / len(qual) if qual else 0
-
-    def check_bounds(
-        val: Union[int, float],
-        bounds: Union[
-            Tuple[Union[int, float], Union[int, float]], Union[int, float]
-        ]
-    ) -> bool:
-        if isinstance(bounds, tuple):
-            return bounds[0] <= val <= bounds[1]
-        return val <= bounds
-
-    if isinstance(gc_bounds, (float, int)):
-        gc_bounds = (0, gc_bounds)
-    if isinstance(length_bounds, (int, float)):
-        length_bounds = (0, length_bounds)
-
-    filtered = {}
-
-    for name, (seq, qual) in seqs.items():
-        gc_content = calc_gc(seq)
+    for name, (seq, qual) in sequences.items():
+        gc_content = (sum(base in 'GCgc' for base in seq) / len(seq)) * 100
         seq_len = len(seq)
-        avg_quality = calc_quality(qual)
+        avg_quality = sum(ord(char) - 33 for char in qual) / len(qual)
 
         if (
-            check_bounds(gc_content, gc_bounds) and
-            check_bounds(seq_len, length_bounds) and
+            (gc_bounds[0] <= gc_content <= gc_bounds[1]) and
+            (length_bounds[0] <= seq_len <= length_bounds[1]) and
             avg_quality >= quality_threshold
         ):
-            filtered[name] = (seq, qual)
+            filtered_sequences[name] = (seq, qual)
 
-    return filtered
-
-
-def main():
-    pass
-
-
-if __name__ == "__main__":
-    main()
+    write_fastq(filtered_sequences, output_fastq)
