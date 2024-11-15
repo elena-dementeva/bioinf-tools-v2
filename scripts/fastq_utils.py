@@ -29,8 +29,15 @@ def write_fastq(sequences: dict, output_fastq: str) -> None:
     output_dir = os.path.dirname(output_path)
 
     if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+        if not os.path.isfile(output_dir):  # Ensure it is not a file
+            os.makedirs(output_dir)
+        else:
+            raise ValueError(
+                f"{output_dir} already exists as a file. "
+                "Please use a different name for the directory."
+            )
 
+    # Check if the output file already exists
     if os.path.exists(output_path):
         raise FileExistsError("File exists. Choose a different name.")
 
