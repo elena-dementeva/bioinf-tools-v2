@@ -1,43 +1,137 @@
 from typing import Tuple, Union
-
-from scripts.dna_rna_tools import (
-    transcribe,
-    reverse,
-    complement,
-    reverse_complement,
-    validate
-)
-
-from scripts.fastq_utils import read_fastq, write_fastq
+from abc import ABC, abstractmethod
+from Bio import SeqIO
+from Bio.SeqUtils import gc_fraction
 
 
-def run_dna_rna_tools(*args: str) -> Union[str, list]:
+class BiologicalSequence(ABC):
     """
-    Processes DNA/RNA sequences based on the specified action.
-    Args:
-        *args: Sequences followed by an action ("transcribe", "reverse",
-        "complement" or "reverse_complement").
-    Returns:
-        Processed sequences as a string or a list of strings.
+    Abstract class for biological sequences.
     """
-    *seqs, action = args
 
-    results = []
+    def __init__(self, sequence: str):
+        self.sequence = sequence.upper()
+        self.check_alphabet()
 
-    for seq in seqs:
-        validate(seq)
-        if action == "transcribe":
-            results.append(transcribe(seq))
-        elif action == "reverse":
-            results.append(reverse(seq))
-        elif action == "complement":
-            results.append(complement(seq))
-        elif action == "reverse_complement":
-            results.append(reverse_complement(seq))
-        else:
-            raise ValueError("error")
+    def __len__(self):
+        return len(self.sequence)
 
-    return results[0] if len(results) == 1 else results
+    def __getitem__(self, index):
+        return self.sequence[index]
+
+    def __str__(self):
+        return self.sequence
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}('{self.sequence}')"
+
+    @abstractmethod
+    def check_alphabet(self):
+        """ Validates the sequence alphabet. """
+        pass
+
+    def to_oneline_fasta(self, output_fasta: str) -> None:
+        """
+        Writes the sequence in single-line FASTA format.
+        """
+        with open(output_fasta, 'w') as outfile:
+            outfile.write(f">{self.__class__.__name__}\n{self.sequence}\n")
+
+
+class NucleicAcidSequence(BiologicalSequence):
+    """
+    Base class for nucleic acid sequences (DNA and RNA).
+    """
+
+    complement_map = {}
+
+    def __init__(self, sequence: str):
+        if not self.complement_map:
+            raise NotImplementedError("NucleicAcidSequence is an abstract class and cannot be instantiated directly.")
+        super().__init__(sequence)
+
+    def check_alphabet(self):
+        """ Validates that the sequence contains only valid nucleotides. """
+        valid_nucleotides = set(self.complement_map.keys())
+        if not set(self.sequence).issubset(valid_nucleotides):
+            raise ValueError(f"Invalid sequence: {self.sequence}")
+
+    def complement(self):
+        """ Returns the complement of the sequence. """
+        return self.__class__(''.join(self.complement_map[nuc] for nuc in self.sequence))
+
+    def reverse(self):
+        """ Returns the reversed sequence. """
+        return self.__class__(self.sequence[::-1])
+
+    def reverse_complement(self):
+        """ Returns the reverse complement of the sequence. """
+        return self.complement().reverse()
+
+
+class DNASequence(NucleicAcidSequence):
+    """
+    Class for DNA sequences.
+    """
+
+    complement_map = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
+
+    def transcribe(self):
+        """ Converts DNA to RNA. """
+        return RNASequence(self.sequence.replace('T', 'U'))
+
+
+class RNASequence(NucleicAcidSequence):
+    """
+    Class for RNA sequences.
+    """
+
+    complement_map = {'A': 'U', 'U': 'A', 'G': 'C', 'C': 'G'}
+
+
+class AminoAcidSequence(BiologicalSequence):
+    """
+    Class for amino acid sequences (proteins).
+    """
+
+    valid_amino_acids = set("ACDEFGHIKLMNPQRSTVWY")
+
+    def check_alphabet(self):
+        """ Validates that the sequence contains only valid amino acids. """
+        if any(aa not in self.valid_amino_acids for aa in self.sequence):
+            raise ValueError(f"Invalid amino acid sequence: {self.sequence}")
+
+    def count_hydrophobic_residues(self):
+        """ Counts the number of hydrophobic residues in the sequence. """
+        hydrophobic = set("AVLIMFWP")
+        return sum(1 for aa in self.sequence if aa in hydrophobic)
+
+
+class BlastParser:
+    """
+    Class for parsing BLAST output files.
+    """
+
+    @staticmethod
+    def parse_blast(input_file: str, output_file: str) -> None:
+        """
+        Extracts the best match descriptions from a BLAST output file and saves them alphabetically.
+        """
+        descriptions = set()
+        with open(input_file) as infile:
+            for line in infile:
+                if "Sequences producing significant alignments:" in line:
+                    break
+            for line in infile:
+                if not line.strip():
+                    break
+                parts = line.split(None, 1)
+                if len(parts) > 1:
+                    descriptions.add(parts[1])
+
+        with open(output_file, 'w') as outfile:
+            for desc in sorted(descriptions):
+                outfile.write(f"{desc}\n")
 
 
 def filter_fastq(
@@ -49,27 +143,26 @@ def filter_fastq(
 ) -> None:
     """
     Reads a FASTQ file, filters sequences based on GC content, length, quality,
-    and writes to a FASTQ file in the 'filtered'folder.
-    Args:
-        input_fastq: Path to the input FASTQ file.
-        output_fastq: Path for saving filtered sequences.
-        gc_bounds: Tuple or value which specify GC content bounds.
-        length_bounds: Tuple or value which specify length bounds.
-        quality_threshold: Minimum quality for filtering.
+    and writes the filtered sequences to a new file.
     """
-    sequences = read_fastq(input_fastq)
-    filtered_sequences = {}
 
-    for name, (seq, qual) in sequences.items():
-        gc_content = (sum(base in 'GCgc' for base in seq) / len(seq)) * 100
-        seq_len = len(seq)
-        avg_quality = sum(ord(char) - 33 for char in qual) / len(qual)
+    if isinstance(gc_bounds, (int, float)):
+        gc_bounds = (0, gc_bounds)
+    if isinstance(length_bounds, int):
+        length_bounds = (0, length_bounds)
+
+    filtered_records = []
+
+    for record in SeqIO.parse(input_fastq, "fastq"):
+        gc_content = gc_fraction(record.seq) * 100
+        seq_len = len(record)
+        avg_quality = sum(record.letter_annotations["phred_quality"]) / len(record)
 
         if (
-            (gc_bounds[0] <= gc_content <= gc_bounds[1]) and
-            (length_bounds[0] <= seq_len <= length_bounds[1]) and
-            avg_quality >= quality_threshold
+            (gc_bounds[0] <= gc_content <= gc_bounds[1])
+            and (length_bounds[0] <= seq_len <= length_bounds[1])
+            and avg_quality >= quality_threshold
         ):
-            filtered_sequences[name] = (seq, qual)
+            filtered_records.append(record)
 
-    write_fastq(filtered_sequences, output_fastq)
+    SeqIO.write(filtered_records, output_fastq, "fastq")
