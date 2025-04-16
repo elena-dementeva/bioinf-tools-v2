@@ -13,29 +13,30 @@ class BiologicalSequence(ABC):
         self.sequence = sequence.upper()
         self.check_alphabet()
 
+    @abstractmethod
     def __len__(self):
-        return len(self.sequence)
+        pass
 
+    @abstractmethod
     def __getitem__(self, index):
-        return self.sequence[index]
+        pass
 
+    @abstractmethod
     def __str__(self):
-        return self.sequence
+        pass
 
+    @abstractmethod
     def __repr__(self):
-        return f"{self.__class__.__name__}('{self.sequence}')"
+        pass
 
     @abstractmethod
     def check_alphabet(self):
         """ Validates the sequence alphabet. """
         pass
 
+    @abstractmethod
     def to_oneline_fasta(self, output_fasta: str) -> None:
-        """
-        Writes the sequence in single-line FASTA format.
-        """
-        with open(output_fasta, 'w') as outfile:
-            outfile.write(f">{self.__class__.__name__}\n{self.sequence}\n")
+        pass
 
 
 class NucleicAcidSequence(BiologicalSequence):
@@ -49,6 +50,23 @@ class NucleicAcidSequence(BiologicalSequence):
         if not self.complement_map:
             raise NotImplementedError("NucleicAcidSequence is an abstract class and cannot be instantiated directly.")
         super().__init__(sequence)
+
+    # Реализация обязательных методов из BiologicalSequence:
+    def __len__(self):
+        return len(self.sequence)
+
+    def __getitem__(self, index):
+        return self.sequence[index]
+
+    def __str__(self):
+        return self.sequence
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}('{self.sequence}')"
+
+    def to_oneline_fasta(self, output_fasta: str) -> None:
+        with open(output_fasta, 'w') as outfile:
+            outfile.write(f">{self.__class__.__name__}\n{self.sequence}\n")
 
     def check_alphabet(self):
         """ Validates that the sequence contains only valid nucleotides. """
@@ -95,6 +113,23 @@ class AminoAcidSequence(BiologicalSequence):
     """
 
     valid_amino_acids = set("ACDEFGHIKLMNPQRSTVWY")
+
+    # Реализация обязательных методов из BiologicalSequence:
+    def __len__(self):
+        return len(self.sequence)
+
+    def __getitem__(self, index):
+        return self.sequence[index]
+
+    def __str__(self):
+        return self.sequence
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}('{self.sequence}')"
+
+    def to_oneline_fasta(self, output_fasta: str) -> None:
+        with open(output_fasta, 'w') as outfile:
+            outfile.write(f">{self.__class__.__name__}\n{self.sequence}\n")
 
     def check_alphabet(self):
         """ Validates that the sequence contains only valid amino acids. """
