@@ -186,6 +186,11 @@ def filter_fastq(
     if isinstance(length_bounds, int):
         length_bounds = (0, length_bounds)
 
+    if gc_bounds[0] > gc_bounds[1]:
+        raise ValueError("Minimum GC bound cannot be greater than maximum GC bound.")
+    if length_bounds[0] > length_bounds[1]:
+        raise ValueError("Minimum length bound cannot be greater than maximum.")
+
     filtered_records = []
 
     for record in SeqIO.parse(input_fastq, "fastq"):

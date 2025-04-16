@@ -1,0 +1,7 @@
+*filtered*
+__pycache__/
+*.pyc
+*.tmp
+*.bak
+*.swp
+*.log
